@@ -8,12 +8,19 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
+import javax.ejb.EJB;
 
 /**
- * @author KK
+ * Servlet class to handle request and play in MasterMind.
+ *
+ * @author Konrad Szwedo
+ * @version 0.5L
  */
 public class MGame extends HttpServlet {
+
+    @EJB
+    IMasterMind masterMind;
+    private static final long serialVersionUID = 123L;
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -25,7 +32,8 @@ public class MGame extends HttpServlet {
      * @throws IOException if an I/O error occurs
      * @throws javax.naming.NamingException
      */
-    private void processRequest(HttpServletRequest request, HttpServletResponse response)
+    private void processRequest(HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException, NamingException {
         response.setContentType("text/html;charset=UTF-8");
         request.setCharacterEncoding("UTF-8");
@@ -45,20 +53,14 @@ public class MGame extends HttpServlet {
             s = 100L;
         }
 
-        InitialContext ic = new InitialContext();
-
-        //java:global[/<app-name>]/<module-name>/<bean-name>!<fullyqualified-bean-interface-name>
-        //java:global/ejb-project/DataMonitor!pl.jrj.data.IDataMonitor
-        //Prawidłowy: java:global/ejb-project/MasterMind!pl.jrj.game.IMasterMind
-        /*
-
-         */
-        IMasterMind masterMind = (IMasterMind) ic.lookup("java:global/ejb-project/MasterMind!IMasterMind");
-
         masterMind.initialize(n, k, s);
-
-        try (PrintWriter out = response.getWriter()) {
+        PrintWriter out = response.getWriter();
+        try {
             out.println(masterMind.play());
+            out.close();
+        } catch(Exception exc) {
+            out.println(n);
+            out.close();
         }
     }
 

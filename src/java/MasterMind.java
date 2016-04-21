@@ -1,4 +1,5 @@
-import pl.jrj.game.*;
+
+import pl.jrj.game.IGameMonitor;
 
 import javax.ejb.Stateful;
 import javax.naming.InitialContext;
@@ -7,43 +8,48 @@ import java.lang.reflect.Array;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
- * @author 123
- * @version 0.7
+ * EJB implementation of IMasterMind interface. Main logic to play in MM game.
+ *
+ * @author Konrad Szwedo
+ * @version 0.5L
  */
 @Stateful
 public class MasterMind implements IMasterMind {
 
-    private MasterClass masterMInner;
+    private static final long serialVersionUID = 123L;
+    private MainCalculation mainCalc;
 
-    //@Inject
     private IGameMonitor gameMonitor;
 
+    /*
+        @param colorsCount max colors
+        @param pegsCount max pegs
+        @param seed random seed
+     */
     @Override
     public void initialize(int colorsCount, int pegsCount, long seed) {
-        InitialContext ic = null;
-        int maxGueses = 15;
+        int maxGueses = 50;
         try {
-            ic = new InitialContext();
-            gameMonitor = (IGameMonitor) ic.lookup("java:global/ejb-project/GameMonitor!pl.jrj.game.IGameMonitor");
+            gameMonitor = (IGameMonitor) new InitialContext()
+                    .lookup("java:global/ejb-project/"
+                            + "GameMonitor!pl.jrj.game.IGameMonitor");
         } catch (NamingException ex) {
-            Logger.getLogger(MasterMind.class.getName()).log(Level.SEVERE, null, ex);
         }
-        gameMonitor.register(5, "92123");
+        gameMonitor.register(5, "98123");
         gameMonitor.initGame(colorsCount, pegsCount, seed);
-        masterMInner = new MasterClass(maxGueses, colorsCount, pegsCount);
+        mainCalc = new MainCalculation(maxGueses, colorsCount, pegsCount);
     }
 
     @Override
     public int play() {
-        masterMInner.solve();
-        return masterMInner.guessCount;
+        mainCalc.solve();
+        return mainCalc.guessCount;
     }
 
     /**
+     * String to evaluation conversion.
      *
      * @param input alphabet string
      * @return Evaulation with correct positions and colors.
@@ -60,8 +66,10 @@ public class MasterMind implements IMasterMind {
     }
 
     /**
-     * @param combination
-     * @return
+     * Guess represented as int[] conversion into alphabet string.
+     *
+     * @param combination int[] input array
+     * @return String "ABCDE" like string
      */
     private String guessToString(int[] combination) {
         StringBuilder string = new StringBuilder();
@@ -73,15 +81,18 @@ public class MasterMind implements IMasterMind {
     }
 
     /**
-     * @param combination
-     * @return
+     * Method calls EJB for hits count.
+     *
+     * @param combination int[] input array
+     * @return Evaulation object with assigned correct positions and colors
+     * hits.
      */
     private Evaluation verifyFromBean(int[] combination) {
         String answer = gameMonitor.verify(guessToString(combination));
         return stringToEval(answer);
     }
 
-    private class MasterClass {
+    private class MainCalculation {
 
         MyDictionary dictionary;
         int guessCount = 0;
@@ -89,7 +100,7 @@ public class MasterMind implements IMasterMind {
         int pegsNumber;
         private Guess[] guesses;
 
-        MasterClass(int paramSize, int paramColors, int paramPegs) {
+        MainCalculation(int paramSize, int paramColors, int paramPegs) {
             this.colorsNumber = paramColors;
             this.pegsNumber = paramPegs;
             guesses = new Guess[paramSize];
@@ -103,11 +114,8 @@ public class MasterMind implements IMasterMind {
             guess.combination = dictionary.firstGuess();
             guess.evaluation = verifyFromBean(guess.combination);
 
-            System.out.format("----> Sprawdzamy: [%s] wynik: %d pozycji %d kolorków \n ",
-                    guessToString(guess.combination), guess.evaluation.correctColorInCorrectPosition,
-                    guess.evaluation.correctColorInWrongPosition);
-
-            if (guess.evaluation.getCorrectColorInCorrectPosition() == pegsNumber) {
+            if (guess.evaluation.getCorrectColorInCorrectPosition()
+                    == pegsNumber) {
                 solved = true;
             }
             guesses[guessCount] = guess;
@@ -117,17 +125,15 @@ public class MasterMind implements IMasterMind {
             while (!solved && guessCount < guesses.length) {
                 guess = new Guess();
                 if (dictionary.possibilities.size() == 1) {
-                    guess.combination = dictionary.possibilities.iterator().next();
+                    guess.combination = dictionary.possibilities.iterator()
+                            .next();
                 } else {
                     guess.combination = minMaxNextStep();
                 }
                 guess.evaluation = verifyFromBean(guess.combination);
 
-                System.out.format("----> Sprawdzamy: [%s] wynik: %d pozycji %d kolorków \n ",
-                        guessToString(guess.combination), guess.evaluation.correctColorInCorrectPosition,
-                        guess.evaluation.correctColorInWrongPosition);
-
-                if (guess.evaluation.getCorrectColorInCorrectPosition() == pegsNumber) {
+                if (guess.evaluation.getCorrectColorInCorrectPosition()
+                        == pegsNumber) {
                     solved = true;
                 }
                 guesses[guessCount] = guess;
@@ -154,7 +160,8 @@ public class MasterMind implements IMasterMind {
                     g.combination = combination;
                     g.evaluation = evaluation;
                     if (!guessUsed(g)) {
-                        int count = dictionary.simulateCountProcessEvaluation(g);
+                        int count = dictionary
+                                .simulateCountProcessEvaluation(g);
                         if (count < min[index]) {
                             min[index] = count;
                         }
@@ -208,7 +215,8 @@ public class MasterMind implements IMasterMind {
             boolean[] counted2 = new boolean[suggested.length];
             for (int i = 0; i < solution.length; i++) {
                 if (!counted[i]) {
-                    int indexContains = contains(solution, suggested[i], counted, counted2);
+                    int indexContains = contains(solution,
+                            suggested[i], counted, counted2);
                     if (indexContains != -1) {
                         counted2[indexContains] = true;
                         evaluation.incrementCorrectColorInWrongPosition();
@@ -218,10 +226,12 @@ public class MasterMind implements IMasterMind {
             return evaluation;
         }
 
-        private int contains(int[] solution, int key, boolean[] counted, boolean[] counted2) {
+        private int contains(int[] solution, int key,
+                boolean[] counted, boolean[] counted2) {
             int position = -1;
             for (int index = 0; index < solution.length; index++) {
-                if (solution[index] == key && !counted2[index] && !counted[index]) {
+                if (solution[index] == key
+                        && !counted2[index] && !counted[index]) {
                     position = index;
                     return position;
                 }
@@ -287,9 +297,10 @@ public class MasterMind implements IMasterMind {
         }
 
         void processEvaluation(int[] guess, Evaluation evaluation) {
-            Iterator possibilitiesItr = possibilities.iterator();
+            Iterator<int[]> possibilitiesItr;
+            possibilitiesItr = possibilities.iterator();
             while (possibilitiesItr.hasNext()) {
-                int[] a = (int[]) possibilitiesItr.next();
+                int[] a = possibilitiesItr.next();
                 Evaluation e = evaluator.evaluate(a, guess);
                 if (!e.equals(evaluation)) {
                     possibilitiesItr.remove();
@@ -302,10 +313,11 @@ public class MasterMind implements IMasterMind {
         }
 
         int simulateCountProcessEvaluation(int[] guess, Evaluation evaluation) {
-            Iterator possibilitiesItr = possibilities.iterator();
+            Iterator<int[]> possibilitiesItr;
+            possibilitiesItr = possibilities.iterator();
             int count = 0;
             while (possibilitiesItr.hasNext()) {
-                int[] a = (int[]) possibilitiesItr.next();
+                int[] a = possibilitiesItr.next();
                 Evaluation e = evaluator.evaluate(a, guess);
                 if (!e.equals(evaluation)) {
                     count++;
@@ -354,6 +366,7 @@ public class MasterMind implements IMasterMind {
         }
 
         public <T> T[] clone_array(T[] array, Class<T> cls) throws Exception {
+            @SuppressWarnings("unchecked")
             T[] copy = (T[]) Array.newInstance(cls, array.length);
             System.arraycopy(array, 0, copy, 0, array.length);
             return copy;
@@ -404,18 +417,21 @@ public class MasterMind implements IMasterMind {
         }
 
         void incrementCorrectColorInCorrectPosition() {
-            this.correctColorInCorrectPosition = this.correctColorInCorrectPosition + 1;
+            this.correctColorInCorrectPosition
+                    = this.correctColorInCorrectPosition + 1;
         }
 
         void incrementCorrectColorInWrongPosition() {
-            this.correctColorInWrongPosition = this.correctColorInWrongPosition + 1;
+            this.correctColorInWrongPosition
+                    = this.correctColorInWrongPosition + 1;
         }
 
         int getCorrectColorInCorrectPosition() {
             return correctColorInCorrectPosition;
         }
 
-        void setCorrectColorInCorrectPosition(int correctColorInCorrectPosition) {
+        void setCorrectColorInCorrectPosition(
+                int correctColorInCorrectPosition) {
             this.correctColorInCorrectPosition = correctColorInCorrectPosition;
         }
 
@@ -428,8 +444,10 @@ public class MasterMind implements IMasterMind {
         }
 
         boolean equals(Evaluation evaluation) {
-            return this.getCorrectColorInCorrectPosition() == evaluation.getCorrectColorInCorrectPosition()
-                    && this.getCorrectColorInWrongPosition() == evaluation.getCorrectColorInWrongPosition();
+            return this.getCorrectColorInCorrectPosition()
+                    == evaluation.getCorrectColorInCorrectPosition()
+                    && this.getCorrectColorInWrongPosition()
+                    == evaluation.getCorrectColorInWrongPosition();
         }
 
     }

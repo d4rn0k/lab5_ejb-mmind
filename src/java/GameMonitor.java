@@ -1,5 +1,4 @@
-
-import pl.jrj.game.*;
+import pl.jrj.game.IGameMonitor;
 
 import java.util.Random;
 import javax.ejb.Remote;
@@ -14,7 +13,7 @@ public class GameMonitor implements IGameMonitor {
 
     boolean debug = true;
     private String letters = "ABCDEFGHIJKLMNOPQRSTUVW";
-    private String answer = "ABDE";
+    private StringBuilder answer = new StringBuilder();
 
     private Random random;
 
@@ -28,14 +27,12 @@ public class GameMonitor implements IGameMonitor {
 
         random = new Random(seed);
 
-        if (debug) {
-            return;
-        }
-
         for (int i = 0; i < k; i++) {
             int randomPosition = random.nextInt(n);
-            answer += letters.substring(randomPosition, randomPosition + 1);
+            answer.append(letters.substring(randomPosition,
+                    randomPosition + 1));
         }
+        System.out.format("WYNIK to: [%s]\n", answer);
     }
 
     @Override
@@ -43,24 +40,44 @@ public class GameMonitor implements IGameMonitor {
 
         int positionHits = 0;
         int colorHits = 0;
-        StringBuilder tempAnswer = new StringBuilder(answer);
+
+        boolean[] excludePositions = new boolean[state.length()];
+        boolean[] excludeColors = new boolean[state.length()];
 
         for (int i = 0; i < state.length(); i++) {
-            if (tempAnswer.charAt(i) == state.charAt(i)) {
+            if (answer.charAt(i) == state.charAt(i)) {
                 positionHits++;
-                tempAnswer.setCharAt(i, '-');
+                excludePositions[i] = true;
             }
         }
 
         for (int i = 0; i < state.length(); i++) {
-            CharSequence asd = tempAnswer.subSequence(i, i + 1);
-            if (state.contains(asd)) {
-                colorHits++;
-                tempAnswer.setCharAt(i, '.');
+            char asd = state.subSequence(i, i + 1).charAt(0);
+
+            if (!excludePositions[i]) {
+
+                int indexContains = contains(answer.toString().toCharArray(), asd, excludePositions, excludeColors);
+
+                if (indexContains != -1) {
+                    excludeColors[indexContains] = true;
+                    colorHits++;
+                }
             }
         }
 
         return String.format("%d%d", positionHits, colorHits);
+    }
+
+    private static int contains(char[] solution, int key, boolean[] counted, boolean[] counted2) {
+        int position = -1;
+
+        for (int index = 0; index < solution.length; index++) {
+            if (solution[index] == key && !counted2[index] && !counted[index]) {
+                position = index;
+                return position;
+            }
+        }
+        return position;
     }
 
 }

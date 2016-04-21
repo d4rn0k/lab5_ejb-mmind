@@ -1,7 +1,10 @@
 import javax.ejb.Remote;
 
 /**
- * @author KK
+ * Mastermind EJB interface.
+ *
+ * @author Konrad Szwedo
+ * @version 0.5L
  */
 @Remote
 public interface IMasterMind {
@@ -10,8 +13,8 @@ public interface IMasterMind {
      * Initialize method for MasterMind game.
      *
      * @param colorsCount Number of colors
-     * @param pegsCount   Number of pegs
-     * @param seed        Seed for random generator
+     * @param pegsCount Number of pegs
+     * @param seed Seed for random generator
      */
     void initialize(int colorsCount, int pegsCount, long seed);
 
